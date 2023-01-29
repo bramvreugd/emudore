@@ -27,7 +27,7 @@ Vic::Vic()
   irq_enabled_ = irq_status_ = 0;
   next_raster_at_ = kLineCycles;
   sprite_sprite_collision_ = 0;
-  sprite_bgnd_collision_ =0;
+  sprite_bgnd_collision_ = 0;
 
   /* sprites */
   for(int i = 0 ; i<8 ; i++)
@@ -116,7 +116,7 @@ bool Vic::emulate()
       raster_counter(0);
     }
   }
-  return true;
+  return verticalSync;
 }
 
 // DMA register access  //////////////////////////////////////////////////////
@@ -159,6 +159,14 @@ uint8_t Vic::read_register(uint8_t r)
   /* raster counter */
   case 0x12:
     retval = raster_c_;
+    break;
+  /* light pen x */
+  case 0x13:
+    retval = lightpen_x_;
+    break;
+  /* light pen x */
+  case 0x14:
+    retval = lightpen_y_;
     break;
   /* sprite enable register */
   case 0x15:
@@ -474,15 +482,17 @@ uint8_t Vic::get_bitmap_data(int column, int row, int line)
  */
 uint16_t Vic::get_sprite_ptr(int n)
 {
+  uint16_t addr;
   uint16_t ptraddr = screen_mem_ + kSpritePtrsOffset + n;
-  return kSpriteSize * mem_->vic_read_byte(ptraddr);
+  addr= kSpriteSize * mem_->vic_read_byte(ptraddr);
+  return addr;
 }
 
 void Vic::draw_ext_backcolor_char(int x, int y, uint8_t data, uint8_t color, uint8_t c)
 {
   for(int i=0 ; i < 8 ; i++)
   {
-    int xoffs = x + 8 - i + horizontal_scroll();
+    int xoffs = x + 7 - i + horizontal_scroll();
     /* don't draw outside (due to horizontal scroll) */
     if(xoffs > kGFirstCol + kGResX)
       continue;
@@ -510,7 +520,7 @@ void Vic::draw_char(int x, int y, uint8_t data, uint8_t color)
 {
   for(int i=0 ; i < 8 ; i++)
   {
-    int xoffs = x + 8 - i + horizontal_scroll();
+    int xoffs = x + 7 - i + horizontal_scroll();
     /* don't draw outside (due to horizontal scroll) */
     if(xoffs > kGFirstCol + kGResX)
       continue;
@@ -548,7 +558,7 @@ void Vic::draw_mcchar(int x, int y, uint8_t data, uint8_t color)
       c = color;
       break;
     }
-    int xoffs = x + 8 - i * 2 + horizontal_scroll();
+    int xoffs = x + 7 - i * 2 + horizontal_scroll();
     io_->screen_update_pixel(
       xoffs,
       y,
@@ -608,7 +618,7 @@ void Vic::draw_bitmap(int x, int y, uint8_t data, uint8_t color)
   uint8_t bgc =  color & 0xf;
   for(int i=0 ; i < 8 ; i++)
   {
-    int xoffs = x + 8 - i + horizontal_scroll();
+    int xoffs = x + 7 - i + horizontal_scroll();
     /* don't draw outside (due to horizontal scroll) */
     if(xoffs > kGFirstCol + kGResX)
       continue;
@@ -783,7 +793,7 @@ void Vic::draw_mcbitmap(int x, int y, uint8_t data, uint8_t scolor, uint8_t rcol
       c = rcolor;
       break;
     }
-    int xoffs = x + 8 - i * 2 + horizontal_scroll();
+    int xoffs = x + 7 - i * 2 + horizontal_scroll();
     io_->screen_update_pixel(
       xoffs,
       y,
@@ -912,7 +922,7 @@ uint8_t Vic::get_sprite_pixel(int n,int x,int y){
     int col=x/8;
     int bit=x%8;
     uint8_t  data = mem_->vic_read_byte(addr + y * 3 + col);
-    return ISSET_BIT(data,7-bit);
+    return ISSET_BIT(data,(7-bit));
   }
 }
 
@@ -1121,4 +1131,9 @@ int Vic::sprite_x(int n)
   if(ISSET_BIT(msbx_,n))
     x |= 1 << 8;
   return x;
+}
+
+void Vic::setLightPen(uint8_t x,uint8_t y){
+   lightpen_x_=x;
+   lightpen_y_=y;
 }
